@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Qtile (Wayland)
+Comment=Qtile tiling window manager
+Exec=/usr/local/bin/start-qtile
+Type=Application
+DesktopNames=qtile

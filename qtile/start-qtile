@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# Session entry point, the port of ~/.xmonad/start-xmonad.
+# Install with: sudo cp ~/.config/qtile/qtile.desktop /usr/share/wayland-sessions/
+#
+# The Debian/Ubuntu qtile package already ships its own session files; this
+# wrapper exists only to set the environment first.
+
+export XDG_CURRENT_DESKTOP=qtile
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=qtile
+
+# Toolkits: prefer Wayland, fall back to XWayland where unsupported.
+export GDK_BACKEND="wayland,x11"
+export QT_QPA_PLATFORM="wayland;xcb"
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+export SDL_VIDEODRIVER=wayland
+export MOZ_ENABLE_WAYLAND=1
+export ELECTRON_OZONE_PLATFORM_HINT=auto   # Brave, Slack, VS Code
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+export XCURSOR_SIZE=24
+
+# Screen layout is no longer xrandr's job.  Either let qtile take the
+# outputs' preferred modes (the default, which is what you want most of the
+# time), or manage them declaratively with kanshi:
+#   run_once kanshi   # reads ~/.config/kanshi/config
+
+exec qtile start -b wayland
