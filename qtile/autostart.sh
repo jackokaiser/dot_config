@@ -23,6 +23,13 @@ run_once() {
 dbus-update-activation-environment --systemd \
 	WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE DISPLAY 2>/dev/null
 
+# Pin monitor positions (~/.config/kanshi/config) -- qtile's Wayland backend
+# auto-arranges outputs by connect order, not physical position, so without
+# this the laptop panel and the external monitor can land in the wrong
+# left/right order.  Runs before anything else so bars/windows appear on the
+# right screen from the start.
+run_once kanshi
+
 # Start everything that ships an XDG autostart entry -- the freedesktop
 # mechanism Ubuntu already uses, so anything installed later is picked up
 # without editing this file.  Entries marked OnlyShowIn=GNOME are skipped
@@ -34,6 +41,11 @@ run_once dex -a
 #   gnome-keyring's autostart entry is OnlyShowIn=GNOME;Unity;MATE
 run_once nm-applet --indicator
 gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh >/dev/null 2>&1
+
+# Clipboard manager, replacing the xmonad `copyq &` startup-hook line.
+# CopyQ grabs its own global hotkey directly rather than through the WM
+# (see mod+v in config.py, which just toggles its window via the CLI).
+run_once copyq
 
 # Lock after 3 minutes idle, and before suspend.  Requires qtile >= 0.35;
 # the C Wayland backend only regained idle-notify-v1 then.  See README.

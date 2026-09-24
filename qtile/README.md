@@ -37,9 +37,29 @@ sudo apt install python3-venv python3-dev libffi-dev libxcb1-dev \
                  terminator blueman copyq
 
 python3 -m venv ~/.local/share/qtile-venv
-~/.local/share/qtile-venv/bin/pip install 'qtile==0.36.0' \
+~/.local/share/qtile-venv/bin/pip install --no-binary qtile \
+    --config-settings=backend=wayland 'qtile==0.36.0' \
     psutil dbus-fast pulsectl pulsectl-asyncio pyxdg
 sudo ln -sf ~/.local/share/qtile-venv/bin/qtile /usr/local/bin/qtile
+```
+
+**`--no-binary qtile` and `--config-settings=backend=wayland` are required,
+not cosmetic.** PyPI carries a prebuilt manylinux wheel for `qtile==0.36.0`
+whose `_ffi.so` (the wayland C backend) is compiled for CPython 3.13. Ubuntu
+26.04's `python3` is 3.14, so a plain `pip install qtile==0.36.0` silently
+installs that ABI-incompatible wheel: the `.so` is present on disk but Python
+refuses to import it, and `qtile start -b wayland` fails with no windows and
+`Wayland backend not built` in the log. `--no-binary qtile` forces a source
+build against the system's `libwlroots-0.19-dev` (matching the running
+interpreter's ABI); `--config-settings=backend=wayland` makes qtile's build
+backend (`builder.py`) raise instead of silently continuing if that build
+fails for any reason, e.g. a missing header. Confirm you got a matching `.so`
+before logging out:
+
+```sh
+find ~/.local/share/qtile-venv -iname "_ffi*.so"
+# should show _ffi.cpython-314-*.so (or whatever `python3 --version` is),
+# never cpython-313
 ```
 
 Those Python extras are not optional in practice — each one silently

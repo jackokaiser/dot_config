@@ -22,12 +22,20 @@ through that key's *unshifted* (level 0) keysym -- on X11 via
 number row is therefore bound below by those keysym names.  If you ever move
 to a us layout, swap NUMROW_KEYS for the plain digits.
 
-The number pad looks contradictory and isn't: the `numpad:mac` xkb option
-(see wl_input_rules) makes it type digits permanently, yet the bindings below
-use the arrow-ish names KP_Home/KP_Up/...  That option only rewrites the
-KEYPAD key *type* so level 2 is always selected; the symbol table still reads
-[KP_Home, KP_7], and qtile asks the keymap for level 0 explicitly.  So apps
-get the digit and qtile gets KP_Home, from the same keypress.
+The number pad looks contradictory and isn't: every physical keypad key's
+symbol table is the pair [nav keysym, digit keysym] (e.g. [KP_Home, KP_7]),
+regardless of the `numpad:*` xkb option (see wl_input_rules) -- level 0 is
+always the nav keysym, level 1 is always the digit.  Only which level gets
+*selected* for apps depends on the option.  `numpad:mac` (the current
+default) pins the KEYPAD key type to the digit level unconditionally, so apps
+always get digits regardless of NumLock state -- at the cost of the
+keyboard's NumLock LED never lighting up, since qtile then never has a reason
+to assert that modifier.  Tried plain `numpad:pc` (digit level only while
+NumLock is actually on, honest LED) to get the LED back; on this external
+keyboard it just didn't produce digits at all, so back to numpad:mac.  Either
+way, qtile's own
+bindings below ask the keymap for level 0 explicitly, so they
+keep working as KP_Home/KP_Up/... no matter which option is active.
 """
 
 import os
@@ -177,6 +185,35 @@ def plane_carry(qtile, d_row, d_col):
         qtile.current_window.togroup(target, switch_group=True)
 
 
+def _screen_by_x(qtile, rank):
+    """The rank-th screen counting left to right by physical x position.
+
+    `qtile.screens` is ordered by however the Wayland backend enumerates
+    outputs -- connector/detection order on wlroots -- not by where they
+    sit on the desktop.  A docked laptop routinely enumerates the
+    built-in eDP-1 before the external monitor even though xrandr places
+    eDP-1 to its *right*, so screen index 0 is not reliably "the left
+    screen".  Every screen-targeting binding/hook goes through this
+    instead of a hardcoded index so "left"/"right" always match reality.
+    """
+    screens = sorted(qtile.screens, key=lambda s: s.x)
+    return screens[rank] if rank < len(screens) else None
+
+
+@lazy.function
+def focus_screen_by_x(qtile, rank):
+    scr = _screen_by_x(qtile, rank)
+    if scr:
+        qtile.focus_screen(scr.index)
+
+
+@lazy.function
+def window_to_screen_by_x(qtile, rank):
+    scr = _screen_by_x(qtile, rank)
+    if scr and qtile.current_window:
+        qtile.current_window.toscreen(scr.index)
+
+
 # --------------------------------------------------------------------------
 # Keys
 # --------------------------------------------------------------------------
@@ -197,7 +234,16 @@ keys = [
     Key([MOD], "o", lazy.layout.next(), desc="Focus next window"),
     Key([MOD], "j", lazy.layout.next(), desc="Focus next window"),
     Key([MOD, "shift"], "j", lazy.layout.previous(), desc="Focus previous window"),
-    Key([MOD], "Return", lazy.layout.swap_main(), desc="Promote window to master"),
+    Key(
+        [MOD],
+        "Return",
+        # swap_main only exists on the Monad* layouts -- Max and Matrix have
+        # no "master pane" concept, so without this filter the binding
+        # throws "No such command" there (0:Chat is pinned to Max, so it'd
+        # be every time you press it in that group).
+        lazy.layout.swap_main().when(layout=["monadtall", "monadwide", "monadthreecol"]),
+        desc="Promote window to master",
+    ),
     Key([MOD], "u", lazy.next_urgent(), desc="Focus urgent window"),
     Key([MOD], "f", lazy.window.toggle_fullscreen(), desc="Toggle fullscreen"),
 
@@ -209,12 +255,12 @@ keys = [
     Key([MOD], "b", lazy.hide_show_bar("top"), desc="Toggle the bar"),
 
     # --- screens (a z e are the physical q w e keys on azerty) ---------
-    Key([MOD], "a", lazy.to_screen(0), desc="Focus left screen"),
-    Key([MOD], "z", lazy.to_screen(1), desc="Focus right screen"),
-    Key([MOD], "e", lazy.to_screen(2), desc="Focus third screen"),
-    Key([MOD, "shift"], "a", lazy.window.toscreen(0), desc="Send window to left screen"),
-    Key([MOD, "shift"], "z", lazy.window.toscreen(1), desc="Send window to right screen"),
-    Key([MOD, "shift"], "e", lazy.window.toscreen(2), desc="Send window to third screen"),
+    Key([MOD], "a", focus_screen_by_x(0), desc="Focus left screen"),
+    Key([MOD], "z", focus_screen_by_x(1), desc="Focus right screen"),
+    Key([MOD], "e", focus_screen_by_x(2), desc="Focus third screen"),
+    Key([MOD, "shift"], "a", window_to_screen_by_x(0), desc="Send window to left screen"),
+    Key([MOD, "shift"], "z", window_to_screen_by_x(1), desc="Send window to right screen"),
+    Key([MOD, "shift"], "e", window_to_screen_by_x(2), desc="Send window to third screen"),
 
     # --- walk the workspace grid ---------------------------------------
     Key([MOD], "Left", plane_focus(0, -1), desc="Workspace to the left"),
@@ -235,6 +281,7 @@ keys = [
     Key([MOD], "F4", lazy.spawn(LAUNCHER), desc="Application launcher"),
     Key([MOD], "p", lazy.spawn(LAUNCHER), desc="Application launcher"),
     Key([MOD, "shift"], "l", lazy.spawn(LOCKER), desc="Lock screen"),
+    Key([MOD], "v", lazy.spawn(["copyq", "toggle"]), desc="Toggle clipboard manager"),
 
     # --- session --------------------------------------------------------
     Key([MOD], "q", lazy.reload_config(), desc="Reload config"),
@@ -395,7 +442,9 @@ try:
         # accident, and it applies from the very first keystroke of the
         # session.  qtile has no numlock setting of its own on Wayland
         # (qtile#4225), but this is an ordinary xkb option, so xkbcommon
-        # applies it here exactly as it would under X11.
+        # applies it here exactly as it would under X11.  (Tried plain
+        # numpad:pc to get an honest NumLock LED instead -- didn't actually
+        # produce digits on this external keyboard, so back to numpad:mac.)
         "type:keyboard": InputConfig(
             kb_layout="fr",
             kb_options="numpad:mac",
@@ -449,7 +498,9 @@ wmname = "LG3D"
 def autostart():
     subprocess.Popen([os.path.join(QTILE_DIR, "autostart.sh")])
     # Start where XMonad used to: terminal workspace on the left screen,
-    # dev workspace on the right one.
-    if len(qtile.screens) > 1:
-        qtile.groups_map["5:Dev"].toscreen(1, toggle=False)
-    qtile.groups_map["1:Term"].toscreen(0, toggle=False)
+    # dev workspace on the right one.  Sorted by x, not by screen index --
+    # see _screen_by_x for why the index alone isn't reliable.
+    screens = sorted(qtile.screens, key=lambda s: s.x)
+    if len(screens) > 1:
+        qtile.groups_map["5:Dev"].toscreen(screens[1].index, toggle=False)
+    qtile.groups_map["1:Term"].toscreen(screens[0].index, toggle=False)
