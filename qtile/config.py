@@ -77,7 +77,7 @@ IS_WAYLAND = BACKEND == "wayland"
 MOD = "mod4"  # super
 
 TERMINAL = "terminator"
-BROWSER = "brave-browser"
+BROWSER = "firefox"
 EDITOR = "emacs"
 FILE_MANAGER = "nautilus"
 LAUNCHER = "rofi -show drun" if not IS_WAYLAND else "wofi --show drun"
