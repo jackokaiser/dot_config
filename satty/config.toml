@@ -1,0 +1,8 @@
+# Config for satty, used by the screenshot binding in qtile/config.py.
+# output-filename's directory must match SHOT_DIR there.
+[general]
+initial-tool = "crop"
+copy-command = "wl-copy"
+output-filename = "~/Pictures/screenshots/%Y-%m-%d-%H%M%S.png"
+actions-on-enter = ["save-to-clipboard", "save-to-file"]
+actions-on-escape = ["exit"]

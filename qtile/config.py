@@ -218,18 +218,15 @@ def window_to_screen_by_x(qtile, rank):
 # Keys
 # --------------------------------------------------------------------------
 
-# Screenshots: grim grabs pixels, piped straight into swappy -- a minimal
-# GTK window where you drag to crop (and annotate if you want), then Ctrl+S
-# to save under SHOT_DIR or Escape to throw the shot away. Nothing ever
-# touches the clipboard; swappy only copies if you press its copy button.
-# There is no Wayland equivalent of `scrot -u`: no client may read another
-# client's pixels, so the second binding pre-selects a region with slurp
-# before handing it to swappy, instead of grabbing the focused window.
+# Screenshots: grim grabs the whole output, piped straight into satty --
+# a GTK window with a built-in crop tool (starts in crop mode, see
+# ~/.config/satty/config.toml), plus annotation if you want it. Enter
+# copies to clipboard and saves under SHOT_DIR, Escape throws the shot away.
+# satty reads its config from ~/.config/satty/config.toml (no CLI flag needed).
+# Full path because satty lives in ~/.local/bin, which isn't on qtile's PATH.
 SHOT_DIR = os.path.expanduser("~/Pictures/screenshots")
-SWAPPY_CONFIG = os.path.join(os.path.dirname(__file__), "swappy.conf")
-_swappy = f'swappy -c "{SWAPPY_CONFIG}" -f -'
-SHOT_SCREEN = ["sh", "-c", f'mkdir -p "{SHOT_DIR}" && grim - | {_swappy}']
-SHOT_REGION = ["sh", "-c", f'mkdir -p "{SHOT_DIR}" && grim -g "$(slurp)" - | {_swappy}']
+SATTY = os.path.expanduser("~/.local/bin/satty")
+SHOT_SCREEN = ["sh", "-c", f'mkdir -p "{SHOT_DIR}" && grim - | "{SATTY}" --filename -']
 
 keys = [
     # --- windows -------------------------------------------------------
@@ -302,8 +299,7 @@ keys = [
     Key([], "XF86MonBrightnessDown", lazy.spawn("brightnessctl set 10%-")),
 
     # --- screenshots ----------------------------------------------------
-    Key([MOD], "Print", lazy.spawn(SHOT_SCREEN), desc="Screenshot of the output, crop/save in swappy"),
-    Key([MOD, "control"], "Print", lazy.spawn(SHOT_REGION), desc="Screenshot of a selected region, crop/save in swappy"),
+    Key([MOD], "Print", lazy.spawn(SHOT_SCREEN), desc="Screenshot of the output, crop/save in satty"),
 ]
 
 # Workspaces: number pad and number row both jump straight to a workspace,
