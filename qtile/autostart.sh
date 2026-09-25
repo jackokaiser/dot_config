@@ -10,12 +10,17 @@
 #   numlockx    -> kb_options="numpad:mac" in config.py
 #   stalonetray -> widget.StatusNotifier in config.py
 #   scrot       -> grim/slurp piped into swappy, bound directly in config.py
-#   xautolock-guard -> qtile >= 0.35 speaks the idle-inhibit protocol, so
-#                      browsers and call apps stop the idle timer themselves
+#
+# Back, because it turns out it's still needed:
+#   xautolock-guard -> qtile >= 0.35 speaks the idle-inhibit protocol, but
+#                      Teams doesn't use it, so the screen still locked
+#                      mid-call. See swayidle-guard, its Wayland port.
 
 run_once() {
 	pgrep -f "$1" >/dev/null || "$@" &
 }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Make the session environment visible to DBus-activated services.  Without
 # this the tray (StatusNotifier), the portals and the screenshot tooling
@@ -49,9 +54,9 @@ run_once copyq
 
 # Lock after 3 minutes idle, and before suspend.  Requires qtile >= 0.35;
 # the C Wayland backend only regained idle-notify-v1 then.  See README.
-run_once swayidle -w \
-	timeout 180 'swaylock -f -c 000000' \
-	before-sleep 'swaylock -f -c 000000'
+# swayidle-guard wraps swayidle so a video call (mic or webcam actively in
+# use) suppresses the lock even with no keyboard/mouse input.
+run_once "$SCRIPT_DIR/swayidle-guard"
 
 # Coding when it's dark (gammastep is the Wayland-native redshift).
 # Location is the centre of France, not where I actually am: this file is in

@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# swayidle only tracks Wayland input idle time, so it still locks the
+# screen mid video-call (mic/camera active, but no keyboard or mouse
+# input) -- the idle-inhibit-unstable-v1 protocol autostart.sh's comment
+# banks on only helps when the call app actually speaks it, and Teams
+# doesn't. Port of ~/.xmonad/xautolock-guard for Wayland.
+#
+# swayidle has no -disable/-enable IPC like xautolock, so the closest
+# equivalent is start/stop: kill it while busy, relaunch (fresh idle
+# countdown) once the call ends -- same "resets the countdown" effect
+# xautolock -enable had.
+
+LOCK_CMD='swaylock -f -c 000000'
+
+start_swayidle() {
+	swayidle -w \
+		timeout 180 "$LOCK_CMD" \
+		before-sleep "$LOCK_CMD" &
+	swayidle_pid=$!
+}
+
+is_busy() {
+	# A running pipewire mic-capture or webcam-capture stream (Teams,
+	# Firefox, ...). NOT fuser on /dev/video*: browsers keep the device fd
+	# open the whole time a page holds camera permission, long after the
+	# actual video call (and its "running" pipewire node) has ended.
+	python3 - <<'EOF'
+import json, subprocess, sys
+try:
+	data = json.loads(subprocess.check_output(["pw-dump"]))
+except Exception:
+	sys.exit(1)
+busy_classes = {"Stream/Input/Audio", "Video/Source", "Stream/Input/Video"}
+for obj in data:
+	if obj.get("type") != "PipeWire:Interface:Node":
+		continue
+	info = obj.get("info", {})
+	props = info.get("props", {})
+	if props.get("media.class") in busy_classes and info.get("state") == "running":
+		sys.exit(0)
+sys.exit(1)
+EOF
+}
+
+swayidle_pid=
+was_busy=0
+start_swayidle
+
+while true; do
+	sleep 15
+	if is_busy; then
+		if [ "$was_busy" -eq 0 ]; then
+			kill "$swayidle_pid" 2>/dev/null
+			was_busy=1
+		fi
+	else
+		if [ "$was_busy" -eq 1 ]; then
+			start_swayidle
+			was_busy=0
+		fi
+	fi
+done

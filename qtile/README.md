@@ -208,11 +208,13 @@ equivalent of XMonad's `onWorkspace`.
 - **Workspace switching uses `Group.toscreen`**, which swaps workspaces
   between screens when the target is already visible elsewhere — the same
   behaviour as XMonad's `greedyView`.
-- **`xautolock-guard` is gone entirely.** qtile ≥ 0.35 implements the
-  idle-inhibit protocol, so browsers and call apps hold the idle timer open
-  themselves — the thing the old script faked by polling PulseAudio and
-  `/dev/video*`. If some app turns out not to participate, `swayidle` can be
-  stopped around it rather than reviving the poller.
+- **`xautolock-guard` is back, as `swayidle-guard`.** qtile ≥ 0.35 implements
+  the idle-inhibit protocol, so most browsers and call apps hold the idle
+  timer open themselves — but Teams doesn't participate, so the screen still
+  locked mid-call. `swayidle-guard` polls PipeWire (`pw-dump`) for a running
+  mic-capture or webcam-capture stream and, on that transition, kills
+  `swayidle`; it relaunches it (fresh 180s countdown) once the call ends.
+  `autostart.sh` runs it in place of a bare `swayidle`.
 
 ## The number pad
 
