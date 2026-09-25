@@ -32,7 +32,7 @@ wants wlroots 0.20, which 26.04 almost certainly doesn't carry — check
 sudo apt install python3-venv python3-dev libffi-dev libxcb1-dev \
                  libcairo2-dev libpango1.0-dev pkg-config \
                  libwlroots-0.19-dev wayland-protocols libwayland-bin libinput-dev \
-                 swaylock swayidle grim slurp wl-clipboard gammastep \
+                 swaylock swayidle grim slurp swappy gammastep \
                  brightnessctl wireplumber wofi dex \
                  terminator blueman copyq
 
@@ -165,8 +165,8 @@ equivalent of XMonad's `onWorkspace`.
 | `super` + `q` | Reload config (no restart, keeps windows) |
 | `super` + `ctrl` + `q` | Restart qtile |
 | `super` + `shift` + `q` | Quit |
-| `super` + `Print` | Screenshot of the output (also copied to clipboard) |
-| `super` + `ctrl` + `Print` | Screenshot of a selected region (ditto) |
+| `super` + `Print` | Screenshot of the output, crop/annotate/save in swappy |
+| `super` + `ctrl` + `Print` | Screenshot of a slurp-selected region, ditto |
 
 ## What changed coming from XMonad
 
@@ -180,7 +180,7 @@ equivalent of XMonad's `onWorkspace`.
 | `stalonetray` | `widget.StatusNotifier` |
 | `xmobar` | qtile's bar, same colours and template |
 | `slock` + `xautolock` | `swaylock` + `swayidle` |
-| `scrot` | `grim` + `slurp`, bound directly in `config.py` |
+| `scrot` | `grim` + `slurp` piped into `swappy`, bound directly in `config.py` |
 | `xrandr` in the session script | outputs' preferred modes, or `kanshi` |
 | `numlockx` | `kb_options="numpad:mac"` |
 | hand-listed tray applets | `dex -a` (XDG autostart) |
@@ -194,6 +194,11 @@ equivalent of XMonad's `onWorkspace`.
 - **`super`+`ctrl`+`Print` grabs a region, not the focused window.** Under
   Wayland no client may read another client's contents, so there is no
   `scrot -u`; `slurp` lets you drag a selection instead.
+- **Screenshots no longer land on the clipboard automatically.** Both
+  bindings pipe `grim` straight into `swappy`, which opens a small window to
+  crop/annotate the shot; `Ctrl+S` saves it under `~/Pictures/screenshots`,
+  `Escape` discards it, and the clipboard is only touched if you explicitly
+  hit swappy's copy button. Config: `swappy.conf` next to `config.py`.
 - **`super`+`q` no longer recompiles.** `reload_config` re-reads `config.py`
   in place, and a syntax error leaves the running config untouched instead of
   killing the session. Log: `~/.local/share/qtile/qtile.log`.

@@ -9,7 +9,7 @@
 #   synclient   -> wl_input_rules in config.py
 #   numlockx    -> kb_options="numpad:mac" in config.py
 #   stalonetray -> widget.StatusNotifier in config.py
-#   scrot       -> grim/slurp, bound directly in config.py
+#   scrot       -> grim/slurp piped into swappy, bound directly in config.py
 #   xautolock-guard -> qtile >= 0.35 speaks the idle-inhibit protocol, so
 #                      browsers and call apps stop the idle timer themselves
 

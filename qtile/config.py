@@ -218,14 +218,18 @@ def window_to_screen_by_x(qtile, rank):
 # Keys
 # --------------------------------------------------------------------------
 
-# Screenshots via the standard wlroots tools (grim grabs, slurp selects a
-# region, wl-copy puts it on the clipboard) rather than a wrapper script.
+# Screenshots: grim grabs pixels, piped straight into swappy -- a minimal
+# GTK window where you drag to crop (and annotate if you want), then Ctrl+S
+# to save under SHOT_DIR or Escape to throw the shot away. Nothing ever
+# touches the clipboard; swappy only copies if you press its copy button.
 # There is no Wayland equivalent of `scrot -u`: no client may read another
-# client's pixels, so the second binding selects a region instead.
+# client's pixels, so the second binding pre-selects a region with slurp
+# before handing it to swappy, instead of grabbing the focused window.
 SHOT_DIR = os.path.expanduser("~/Pictures/screenshots")
-_shot = f'mkdir -p "{SHOT_DIR}" && f="{SHOT_DIR}/$(date +%F-%H%M%S).png"'
-SHOT_SCREEN = ["sh", "-c", f'{_shot} && grim "$f" && wl-copy < "$f"']
-SHOT_REGION = ["sh", "-c", f'{_shot} && grim -g "$(slurp)" "$f" && wl-copy < "$f"']
+SWAPPY_CONFIG = os.path.join(os.path.dirname(__file__), "swappy.conf")
+_swappy = f'swappy -c "{SWAPPY_CONFIG}" -f -'
+SHOT_SCREEN = ["sh", "-c", f'mkdir -p "{SHOT_DIR}" && grim - | {_swappy}']
+SHOT_REGION = ["sh", "-c", f'mkdir -p "{SHOT_DIR}" && grim -g "$(slurp)" - | {_swappy}']
 
 keys = [
     # --- windows -------------------------------------------------------
@@ -298,8 +302,8 @@ keys = [
     Key([], "XF86MonBrightnessDown", lazy.spawn("brightnessctl set 10%-")),
 
     # --- screenshots ----------------------------------------------------
-    Key([MOD], "Print", lazy.spawn(SHOT_SCREEN), desc="Screenshot of the output"),
-    Key([MOD, "control"], "Print", lazy.spawn(SHOT_REGION), desc="Screenshot of a selected region"),
+    Key([MOD], "Print", lazy.spawn(SHOT_SCREEN), desc="Screenshot of the output, crop/save in swappy"),
+    Key([MOD, "control"], "Print", lazy.spawn(SHOT_REGION), desc="Screenshot of a selected region, crop/save in swappy"),
 ]
 
 # Workspaces: number pad and number row both jump straight to a workspace,
