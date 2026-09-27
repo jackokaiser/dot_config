@@ -363,6 +363,45 @@ def tray_widget():
     return widget.StatusNotifier(icon_size=18, padding=4)
 
 
+# Connection status icon, next to the tray's bluetooth icon: wifi / wired /
+# disconnected. Click opens wifi-menu (a dmenu-style nmcli picker) rather
+# than routing through nm-applet's own tray icon -- indicator apps like
+# nm-applet don't implement the SNI "Activate" method (left-click is a
+# no-op), and qtile's tray context-menu support isn't reliable enough to
+# depend on either. nm-applet keeps running just for its secret-agent
+# role: it still pops up its own password dialog when wifi-menu connects
+# to a network that needs one.
+WIFI_MENU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wifi-menu")
+def connection_icon():
+    try:
+        out = subprocess.check_output(
+            ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "dev", "status"],
+            text=True,
+            timeout=2,
+        )
+    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired):
+        return "?"
+    wifi_connected = False
+    for line in out.splitlines():
+        _device, _, rest = line.partition(":")
+        conn_type, _, state = rest.partition(":")
+        if state != "connected":
+            continue
+        if conn_type == "ethernet":
+            return "🔌"
+        if conn_type == "wifi":
+            wifi_connected = True
+    return "📶" if wifi_connected else "🚫"
+
+
+def wifi_widget():
+    return widget.GenPollText(
+        func=connection_icon,
+        update_interval=5,
+        mouse_callbacks={"Button1": lazy.spawn(WIFI_MENU)},
+    )
+
+
 def status_bar(with_tray):
     widgets = [
         widget.GroupBox(
@@ -404,7 +443,12 @@ def status_bar(with_tray):
         widget.PulseVolume(fmt="Vol: {}"),
     ]
     if with_tray:
-        widgets += [widget.Spacer(length=8), tray_widget()]
+        widgets += [
+            widget.Sep(foreground="#444444"),
+            wifi_widget(),
+            widget.Spacer(length=8),
+            tray_widget(),
+        ]
     widgets += [
         widget.Spacer(length=8),
         widget.Clock(format="%a %b %_d %R", foreground=CURRENT_WS),

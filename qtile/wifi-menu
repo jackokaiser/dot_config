@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Wifi network picker bound to a click on the bar's wifi glyph (see
+# wifi_widget in config.py).
+#
+# Not routed through nm-applet's own tray menu: qtile's tray can't
+# reliably drive it -- indicator-style apps like nm-applet don't
+# implement the SNI "Activate" method, so left-click on their icon is a
+# no-op, and qtile's/qtile-extras' context-menu support is spotty (right
+# click either does nothing or, with qtile-extras, broke icon rendering
+# for every tray item). So this drives nmcli directly instead, and lets
+# nm-applet's *secret agent* (still running, registered with
+# NetworkManager) pop up its own password dialog when a chosen network
+# needs one -- that part of nm-applet works fine, only its tray icon
+# doesn't.
+
+set -euo pipefail
+
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+	DMENU=(wofi --dmenu --prompt Wifi)
+else
+	DMENU=(rofi -dmenu -p Wifi)
+fi
+
+# Sort connected-first, then by signal, so that when the same SSID comes
+# from multiple APs the connected one is what survives the SSID dedup
+# below (not necessarily the strongest signal of the bunch).
+mapfile -t LINES < <(
+	nmcli -t -f active,signal,ssid dev wifi list --rescan yes |
+		sort -t: -k1,1r -k2,2rn |
+		awk -F: '$3 != "" && !seen[$3]++ { print $3 ($1 == "yes" ? "  (connected)" : "") }'
+)
+
+CHOICE=$(printf '%s\n' "${LINES[@]}" | "${DMENU[@]}") || exit 0
+SSID=${CHOICE%  (connected)}
+[ -z "$SSID" ] && exit 0
+
+if nmcli -t -f NAME connection show | grep -qxF "$SSID"; then
+	nmcli connection up id "$SSID"
+else
+	nmcli device wifi connect "$SSID"
+fi
