@@ -33,7 +33,7 @@ sudo apt install python3-venv python3-dev libffi-dev libxcb1-dev \
                  libcairo2-dev libpango1.0-dev pkg-config \
                  libwlroots-0.19-dev wayland-protocols libwayland-bin libinput-dev \
                  swaylock swayidle grim slurp swappy gammastep \
-                 brightnessctl wireplumber wofi dex \
+                 brightnessctl wireplumber wofi dex mako-notifier \
                  terminator blueman copyq
 
 python3 -m venv ~/.local/share/qtile-venv
@@ -215,6 +215,14 @@ equivalent of XMonad's `onWorkspace`.
   mic-capture or webcam-capture stream and, on that transition, kills
   `swayidle`; it relaunches it (fresh 180s countdown) once the call ends.
   `autostart.sh` runs it in place of a bare `swayidle`.
+- **Battery warning via desktop notification, not just a bar colour.**
+  `widget.Battery`'s `low_percentage` only recolours the bar text, which is
+  easy to miss with the screen off or attention elsewhere. `battery-guard`
+  polls `/sys/class/power_supply/BAT*` every 30s and fires one `notify-send`
+  at 15% and another at 5% while discharging (each re-arms once you plug in
+  or the level recovers). Requires a notification daemon — nothing on this
+  Wayland session provides `org.freedesktop.Notifications` by default the
+  way GNOME/KDE do, so `autostart.sh` also starts `mako`.
 
 ## The number pad
 

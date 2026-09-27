@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Battery-low desktop notification. Companion to widget.Battery's
+# low_percentage in config.py, which only recolors the bar text -- nothing
+# pops up a notification when the laptop is unplugged and left unattended
+# (screen off, away from the bar).
+#
+# Fires once per threshold crossing, not every poll, so sitting at 12% for
+# an hour doesn't nag every 30s; re-arms once charging (or back above the
+# threshold) so the next discharge cycle warns again.
+
+BAT="$(ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -1)"
+WARN_PCT=15   # matches widget.Battery's low_percentage in config.py
+CRIT_PCT=5    # matches UPower's own PercentageCritical (/etc/UPower/UPower.conf);
+              # HybridSleep still kicks in automatically at PercentageAction=2%
+
+warned=0
+critical=0
+
+while true; do
+	capacity="$(cat "$BAT/capacity" 2>/dev/null)"
+	status="$(cat "$BAT/status" 2>/dev/null)"
+
+	if [ "$status" != "Discharging" ] || [ -z "$capacity" ]; then
+		warned=0
+		critical=0
+		sleep 30
+		continue
+	fi
+
+	if [ "$capacity" -le "$CRIT_PCT" ] && [ "$critical" -eq 0 ]; then
+		notify-send -u critical -a battery-guard -i battery-caution \
+			"Battery critical: ${capacity}%" "Plug in now."
+		critical=1
+	elif [ "$capacity" -le "$WARN_PCT" ] && [ "$warned" -eq 0 ]; then
+		notify-send -u normal -a battery-guard -i battery-low \
+			"Battery low: ${capacity}%" "Consider plugging in."
+		warned=1
+	fi
+
+	sleep 30
+done

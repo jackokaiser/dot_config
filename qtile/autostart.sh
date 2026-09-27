@@ -63,3 +63,12 @@ run_once "$SCRIPT_DIR/swayidle-guard"
 # a public repo, and sunset timing doesn't need better than country accuracy.
 # For the real thing without hardcoding it, use `gammastep -l geoclue2`.
 run_once gammastep -l 46.6:2.5
+
+# Notification daemon -- notify-send is a no-op without one, and nothing on
+# Wayland ships an org.freedesktop.Notifications service by default the way
+# GNOME/KDE sessions do.
+run_once mako
+
+# Desktop warning when the battery gets low, since widget.Battery in
+# config.py only recolors the bar text.
+run_once "$SCRIPT_DIR/battery-guard"

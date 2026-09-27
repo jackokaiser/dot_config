@@ -1,0 +1,21 @@
+# mako's own defaults are unusable out of the box: default-timeout=0 means
+# nothing ever auto-dismisses, and on-button-left=invoke-default-action means
+# left-click does nothing (no default action is ever set), so a notification
+# just sits there forever with no visible way to close it.
+
+on-button-left=dismiss
+on-button-right=dismiss-all
+default-timeout=8000
+font=Ubuntu Mono 11
+
+background-color=#000000ee
+text-color=#eeeeee
+border-color=#555555
+border-size=2
+width=350
+padding=10
+
+[urgency=critical]
+border-color=#cc0000
+# battery-guard's critical (5%) warning: worth leaving up until dismissed.
+default-timeout=0
